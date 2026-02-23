@@ -1,0 +1,28 @@
+@using BlazorTailwindApp.Models.Entities
+
+<div class="space-y-3">
+    @foreach (var option in Question.Options)
+    {
+        <label class="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors @(SelectedOptionId == option.Id ? "bg-blue-50 border-blue-300" : "")">
+            <input type="radio"
+                   name="@($"q_{Question.Id}")"
+                   value="@option.Id"
+                   checked="@(SelectedOptionId == option.Id)"
+                   @onchange="() => OnSelect(option.Id)"
+                   class="w-4 h-4 text-blue-600" />
+            <span class="text-gray-700">@option.Text</span>
+        </label>
+    }
+</div>
+
+@code {
+    [Parameter] public Question Question { get; set; } = null!;
+    [Parameter] public int? SelectedOptionId { get; set; }
+    [Parameter] public EventCallback<int?> SelectedOptionIdChanged { get; set; }
+
+    private async Task OnSelect(int optionId)
+    {
+        SelectedOptionId = optionId;
+        await SelectedOptionIdChanged.InvokeAsync(optionId);
+    }
+}

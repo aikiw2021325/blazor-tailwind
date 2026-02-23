@@ -1,0 +1,270 @@
+@page "/admin/surveys/{SurveyId:int}/questions/{Id:int}"
+@rendermode InteractiveServer
+@layout BlazorTailwindApp.Components.Layout.AdminLayout
+@using BlazorTailwindApp.Models.Entities
+@using BlazorTailwindApp.Models.Enums
+@using BlazorTailwindApp.Services
+@inject ISurveyAdminService AdminService
+@inject NavigationManager Navigation
+
+<div>
+    <div class="mb-6">
+        <a href="/admin/surveys/@SurveyId" class="text-sm text-blue-600 hover:text-blue-800">&larr; アンケートに戻る</a>
+    </div>
+
+    @if (_question == null)
+    {
+        <p class="text-gray-500">読み込み中...</p>
+    }
+    else
+    {
+        <div class="space-y-6">
+            <!-- 基本設定 -->
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4">質問の編集</h2>
+                <div class="space-y-4 max-w-2xl">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">質問タイプ</label>
+                        <select @bind="_question.QuestionType"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="@QuestionType.SingleChoice">単一選択</option>
+                            <option value="@QuestionType.MultipleChoice">複数選択</option>
+                            <option value="@QuestionType.MatrixRating">マトリクス評価</option>
+                            <option value="@QuestionType.NpsScale">NPS</option>
+                            <option value="@QuestionType.BoothEvaluation">ブース評価</option>
+                            <option value="@QuestionType.FreeText">自由記述</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">質問テキスト</label>
+                        <input type="text" @bind="_question.Text"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">ステップ番号</label>
+                            <input type="number" @bind="_question.Step" min="1"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">表示順</label>
+                            <input type="number" @bind="_question.DisplayOrder" min="0"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" @bind="_question.IsRequired" class="w-4 h-4" />
+                            <span class="text-sm text-gray-700">必須</span>
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" @bind="_question.AllowOtherOption" class="w-4 h-4" />
+                            <span class="text-sm text-gray-700">「その他」オプション</span>
+                        </label>
+                    </div>
+                    @if (_question.QuestionType == QuestionType.NpsScale)
+                    {
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">低スコアラベル</label>
+                                <input type="text" @bind="_question.NpsLowLabel" placeholder="全くそう思わない"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">高スコアラベル</label>
+                                <input type="text" @bind="_question.NpsHighLabel" placeholder="非常にそう思う"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                            </div>
+                        </div>
+                    }
+                    <button @onclick="SaveQuestion"
+                            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
+                        保存
+                    </button>
+                    @if (_savedMessage != null)
+                    {
+                        <span class="ml-3 text-sm text-green-600">@_savedMessage</span>
+                    }
+                </div>
+            </div>
+
+            <!-- 選択肢 (SingleChoice / MultipleChoice) -->
+            @if (_question.QuestionType is QuestionType.SingleChoice or QuestionType.MultipleChoice)
+            {
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <h3 class="text-md font-semibold text-gray-900 mb-4">選択肢</h3>
+                    <div class="space-y-2 mb-4">
+                        @foreach (var option in _question.Options)
+                        {
+                            <div class="flex items-center gap-2">
+                                <input type="text" @bind="option.Text"
+                                       class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                                <input type="number" @bind="option.DisplayOrder" class="w-20 px-3 py-2 border border-gray-300 rounded-md" placeholder="順序" />
+                                <button @onclick="() => UpdateOption(option)" class="text-sm text-blue-600 hover:text-blue-800">保存</button>
+                                <button @onclick="() => DeleteOption(option.Id)" class="text-sm text-red-600 hover:text-red-800">削除</button>
+                            </div>
+                        }
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <input type="text" @bind="_newOptionText" placeholder="新しい選択肢"
+                               class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        <button @onclick="AddOption"
+                                class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm">
+                            追加
+                        </button>
+                    </div>
+                </div>
+            }
+
+            <!-- マトリクス行 (MatrixRating / BoothEvaluation) -->
+            @if (_question.QuestionType is QuestionType.MatrixRating or QuestionType.BoothEvaluation)
+            {
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <h3 class="text-md font-semibold text-gray-900 mb-4">行項目</h3>
+                    <div class="space-y-2 mb-4">
+                        @foreach (var row in _question.MatrixRows)
+                        {
+                            <div class="flex items-center gap-2">
+                                <input type="text" @bind="row.Text"
+                                       class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                                <input type="number" @bind="row.DisplayOrder" class="w-20 px-3 py-2 border border-gray-300 rounded-md" placeholder="順序" />
+                                <button @onclick="() => UpdateMatrixRow(row)" class="text-sm text-blue-600 hover:text-blue-800">保存</button>
+                                <button @onclick="() => DeleteMatrixRow(row.Id)" class="text-sm text-red-600 hover:text-red-800">削除</button>
+                            </div>
+                        }
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <input type="text" @bind="_newRowText" placeholder="新しい行項目"
+                               class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        <button @onclick="AddMatrixRow"
+                                class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm">
+                            追加
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <h3 class="text-md font-semibold text-gray-900 mb-4">列ヘッダー</h3>
+                    <div class="space-y-2 mb-4">
+                        @foreach (var col in _question.MatrixColumns)
+                        {
+                            <div class="flex items-center gap-2">
+                                <input type="text" @bind="col.Text"
+                                       class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                                <input type="number" @bind="col.DisplayOrder" class="w-20 px-3 py-2 border border-gray-300 rounded-md" placeholder="順序" />
+                                <button @onclick="() => UpdateMatrixColumn(col)" class="text-sm text-blue-600 hover:text-blue-800">保存</button>
+                                <button @onclick="() => DeleteMatrixColumn(col.Id)" class="text-sm text-red-600 hover:text-red-800">削除</button>
+                            </div>
+                        }
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <input type="text" @bind="_newColumnText" placeholder="新しい列ヘッダー"
+                               class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        <button @onclick="AddMatrixColumn"
+                                class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm">
+                            追加
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public int SurveyId { get; set; }
+    [Parameter] public int Id { get; set; }
+
+    private Question? _question;
+    private string? _savedMessage;
+    private string _newOptionText = string.Empty;
+    private string _newRowText = string.Empty;
+    private string _newColumnText = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadQuestion();
+    }
+
+    private async Task LoadQuestion()
+    {
+        _question = await AdminService.GetQuestionAsync(Id);
+    }
+
+    private async Task SaveQuestion()
+    {
+        if (_question == null) return;
+        await AdminService.UpdateQuestionAsync(_question);
+        _savedMessage = "保存しました";
+        StateHasChanged();
+        await Task.Delay(2000);
+        _savedMessage = null;
+        StateHasChanged();
+    }
+
+    // Options
+    private async Task AddOption()
+    {
+        if (string.IsNullOrWhiteSpace(_newOptionText) || _question == null) return;
+        await AdminService.AddOptionAsync(new QuestionOption
+        {
+            QuestionId = _question.Id,
+            Text = _newOptionText,
+            DisplayOrder = _question.Options.Count
+        });
+        _newOptionText = string.Empty;
+        await LoadQuestion();
+    }
+
+    private async Task UpdateOption(QuestionOption option) => await AdminService.UpdateOptionAsync(option);
+
+    private async Task DeleteOption(int optionId)
+    {
+        await AdminService.DeleteOptionAsync(optionId);
+        await LoadQuestion();
+    }
+
+    // Matrix Rows
+    private async Task AddMatrixRow()
+    {
+        if (string.IsNullOrWhiteSpace(_newRowText) || _question == null) return;
+        await AdminService.AddMatrixRowAsync(new MatrixRow
+        {
+            QuestionId = _question.Id,
+            Text = _newRowText,
+            DisplayOrder = _question.MatrixRows.Count
+        });
+        _newRowText = string.Empty;
+        await LoadQuestion();
+    }
+
+    private async Task UpdateMatrixRow(MatrixRow row) => await AdminService.UpdateMatrixRowAsync(row);
+
+    private async Task DeleteMatrixRow(int rowId)
+    {
+        await AdminService.DeleteMatrixRowAsync(rowId);
+        await LoadQuestion();
+    }
+
+    // Matrix Columns
+    private async Task AddMatrixColumn()
+    {
+        if (string.IsNullOrWhiteSpace(_newColumnText) || _question == null) return;
+        await AdminService.AddMatrixColumnAsync(new MatrixColumn
+        {
+            QuestionId = _question.Id,
+            Text = _newColumnText,
+            DisplayOrder = _question.MatrixColumns.Count
+        });
+        _newColumnText = string.Empty;
+        await LoadQuestion();
+    }
+
+    private async Task UpdateMatrixColumn(MatrixColumn col) => await AdminService.UpdateMatrixColumnAsync(col);
+
+    private async Task DeleteMatrixColumn(int colId)
+    {
+        await AdminService.DeleteMatrixColumnAsync(colId);
+        await LoadQuestion();
+    }
+}

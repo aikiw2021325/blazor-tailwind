@@ -1,0 +1,151 @@
+@using BlazorTailwindApp.Models.Entities
+@using BlazorTailwindApp.Models.Enums
+@using BlazorTailwindApp.Components.Survey.Questions
+
+<div class="mb-8">
+    <h3 class="text-lg font-semibold text-gray-800 mb-1">
+        @Question.Text
+        @if (Question.IsRequired)
+        {
+            <span class="text-red-500 ml-1">*</span>
+        }
+    </h3>
+    @if (!string.IsNullOrEmpty(ValidationMessage))
+    {
+        <p class="text-red-500 text-sm mt-1">@ValidationMessage</p>
+    }
+
+    <div class="mt-4">
+        @switch (Question.QuestionType)
+        {
+            case QuestionType.SingleChoice:
+                <SingleChoiceQuestion Question="Question"
+                                      SelectedOptionId="GetSingleChoiceValue()"
+                                      SelectedOptionIdChanged="OnSingleChoiceChanged" />
+                break;
+
+            case QuestionType.MultipleChoice:
+                <MultipleChoiceQuestion Question="Question"
+                                        SelectedOptionIds="GetMultipleChoiceValues()"
+                                        SelectedOptionIdsChanged="OnMultipleChoiceChanged"
+                                        OtherText="GetOtherText()"
+                                        OtherTextChanged="OnOtherTextChanged" />
+                break;
+
+            case QuestionType.MatrixRating:
+                <MatrixRatingQuestion Question="Question"
+                                      Selections="GetMatrixSelections()"
+                                      SelectionsChanged="OnMatrixSelectionsChanged" />
+                break;
+
+            case QuestionType.NpsScale:
+                <NpsScaleQuestion Question="Question"
+                                  SelectedValue="GetNpsValue()"
+                                  SelectedValueChanged="OnNpsChanged" />
+                break;
+
+            case QuestionType.BoothEvaluation:
+                <BoothEvaluationQuestion Question="Question"
+                                         Selections="GetMatrixSelections()"
+                                         SelectionsChanged="OnMatrixSelectionsChanged"
+                                         DynamicRows="DynamicRows"
+                                         DynamicRowsChanged="OnDynamicRowsChanged" />
+                break;
+
+            case QuestionType.FreeText:
+                <FreeTextQuestion Question="Question"
+                                  TextValue="GetFreeTextValue()"
+                                  TextValueChanged="OnFreeTextChanged" />
+                break;
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public Question Question { get; set; } = null!;
+    [Parameter] public EventCallback OnAnswerChanged { get; set; }
+    [Parameter] public string? ValidationMessage { get; set; }
+
+    [CascadingParameter] public SurveyAnswerState? AnswerState { get; set; }
+
+    private List<BoothEvaluationQuestion.DynamicRowData> DynamicRows { get; set; } = [];
+
+    // Single Choice
+    private int? GetSingleChoiceValue()
+    {
+        return AnswerState?.GetSingleChoice(Question.Id);
+    }
+
+    private async Task OnSingleChoiceChanged(int? optionId)
+    {
+        AnswerState?.SetSingleChoice(Question.Id, optionId);
+        await OnAnswerChanged.InvokeAsync();
+    }
+
+    // Multiple Choice
+    private List<int> GetMultipleChoiceValues()
+    {
+        return AnswerState?.GetMultipleChoice(Question.Id) ?? [];
+    }
+
+    private async Task OnMultipleChoiceChanged(List<int> optionIds)
+    {
+        AnswerState?.SetMultipleChoice(Question.Id, optionIds);
+        await OnAnswerChanged.InvokeAsync();
+    }
+
+    private string? GetOtherText()
+    {
+        return AnswerState?.GetOtherText(Question.Id);
+    }
+
+    private async Task OnOtherTextChanged(string? text)
+    {
+        AnswerState?.SetOtherText(Question.Id, text);
+        await OnAnswerChanged.InvokeAsync();
+    }
+
+    // Matrix
+    private Dictionary<int, int> GetMatrixSelections()
+    {
+        return AnswerState?.GetMatrixSelections(Question.Id) ?? new();
+    }
+
+    private async Task OnMatrixSelectionsChanged(Dictionary<int, int> selections)
+    {
+        AnswerState?.SetMatrixSelections(Question.Id, selections);
+        await OnAnswerChanged.InvokeAsync();
+    }
+
+    // NPS
+    private int? GetNpsValue()
+    {
+        return AnswerState?.GetNpsValue(Question.Id);
+    }
+
+    private async Task OnNpsChanged(int? value)
+    {
+        AnswerState?.SetNpsValue(Question.Id, value);
+        await OnAnswerChanged.InvokeAsync();
+    }
+
+    // Free Text
+    private string? GetFreeTextValue()
+    {
+        return AnswerState?.GetFreeText(Question.Id);
+    }
+
+    private async Task OnFreeTextChanged(string? text)
+    {
+        AnswerState?.SetFreeText(Question.Id, text);
+        await OnAnswerChanged.InvokeAsync();
+    }
+
+    // Dynamic rows
+    private async Task OnDynamicRowsChanged(List<BoothEvaluationQuestion.DynamicRowData> rows)
+    {
+        DynamicRows = rows;
+        AnswerState?.SetDynamicRows(Question.Id, rows);
+        await OnAnswerChanged.InvokeAsync();
+    }
+}

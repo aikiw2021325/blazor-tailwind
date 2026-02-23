@@ -1,0 +1,65 @@
+@page "/admin/surveys/{SurveyId:int}/responses"
+@rendermode InteractiveServer
+@layout BlazorTailwindApp.Components.Layout.AdminLayout
+@using BlazorTailwindApp.Models.Entities
+@using BlazorTailwindApp.Services
+@inject ISurveyAdminService AdminService
+
+<div>
+    <div class="mb-6">
+        <a href="/admin/surveys/@SurveyId" class="text-sm text-blue-600 hover:text-blue-800">&larr; アンケートに戻る</a>
+    </div>
+
+    <h1 class="text-2xl font-bold text-gray-900 mb-6">回答一覧</h1>
+
+    @if (_responses == null)
+    {
+        <p class="text-gray-500">読み込み中...</p>
+    }
+    else if (_responses.Count == 0)
+    {
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+            <p class="text-gray-500">回答がありません。</p>
+        </div>
+    }
+    else
+    {
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <table class="w-full">
+                <thead>
+                    <tr class="bg-gray-50 border-b border-gray-200">
+                        <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">ID</th>
+                        <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">回答者</th>
+                        <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">回答日時</th>
+                        <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">操作</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    @foreach (var response in _responses)
+                    {
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 text-sm text-gray-600">@response.Id</td>
+                            <td class="px-6 py-4 text-sm text-gray-600">@(response.RespondentIdentifier ?? "匿名")</td>
+                            <td class="px-6 py-4 text-sm text-gray-600">@response.SubmittedAt.ToString("yyyy/MM/dd HH:mm")</td>
+                            <td class="px-6 py-4">
+                                <a href="/admin/surveys/@SurveyId/responses/@response.Id"
+                                   class="text-sm text-blue-600 hover:text-blue-800">詳細</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public int SurveyId { get; set; }
+
+    private List<SurveyResponse>? _responses;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _responses = await AdminService.GetResponsesAsync(SurveyId);
+    }
+}

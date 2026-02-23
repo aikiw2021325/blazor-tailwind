@@ -1,0 +1,121 @@
+@using BlazorTailwindApp.Models.Entities
+
+<div class="space-y-4">
+    <div class="overflow-x-auto">
+        <table class="w-full border-collapse">
+            <thead>
+                <tr>
+                    <th class="p-3 text-left border-b-2 border-gray-200 bg-gray-50 min-w-[200px]">ブース名</th>
+                    @foreach (var col in Question.MatrixColumns)
+                    {
+                        <th class="p-3 text-center border-b-2 border-gray-200 bg-gray-50 min-w-[80px] text-sm font-medium text-gray-600">
+                            @col.Text
+                        </th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in Question.MatrixRows)
+                {
+                    <tr class="border-b border-gray-100 hover:bg-gray-50">
+                        <td class="p-3 text-gray-700 font-medium">@row.Text</td>
+                        @foreach (var col in Question.MatrixColumns)
+                        {
+                            <td class="p-3 text-center">
+                                <input type="radio"
+                                       name="@($"q_{Question.Id}_r_{row.Id}")"
+                                       checked="@(GetSelectedColumnId(row.Id) == col.Id)"
+                                       @onchange="() => OnSelect(row.Id, col.Id)"
+                                       class="w-4 h-4 text-blue-600" />
+                            </td>
+                        }
+                    </tr>
+                }
+                @foreach (var row in DynamicRows)
+                {
+                    <tr class="border-b border-gray-100 hover:bg-gray-50">
+                        <td class="p-3">
+                            <input type="text" value="@row.Text"
+                                   @onchange="e => OnDynamicRowTextChange(row.TempId, (string?)e.Value)"
+                                   placeholder="ブース名を入力"
+                                   class="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </td>
+                        @foreach (var col in Question.MatrixColumns)
+                        {
+                            <td class="p-3 text-center">
+                                <input type="radio"
+                                       name="@($"q_{Question.Id}_dyn_{row.TempId}")"
+                                       checked="@(GetDynamicSelectedColumnId(row.TempId) == col.Id)"
+                                       @onchange="() => OnDynamicSelect(row.TempId, col.Id)"
+                                       class="w-4 h-4 text-blue-600" />
+                            </td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <button type="button"
+            @onclick="AddDynamicRow"
+            class="flex items-center gap-2 px-4 py-2 text-sm text-blue-600 border border-blue-300 rounded-lg hover:bg-blue-50 transition-colors">
+        + ブースを追加
+    </button>
+</div>
+
+@code {
+    [Parameter] public Question Question { get; set; } = null!;
+    [Parameter] public Dictionary<int, int> Selections { get; set; } = new();
+    [Parameter] public EventCallback<Dictionary<int, int>> SelectionsChanged { get; set; }
+    [Parameter] public List<DynamicRowData> DynamicRows { get; set; } = [];
+    [Parameter] public EventCallback<List<DynamicRowData>> DynamicRowsChanged { get; set; }
+
+    private int _nextTempId = 1;
+
+    public class DynamicRowData
+    {
+        public int TempId { get; set; }
+        public string Text { get; set; } = string.Empty;
+        public int? SelectedColumnId { get; set; }
+    }
+
+    private int? GetSelectedColumnId(int rowId)
+    {
+        return Selections.TryGetValue(rowId, out var colId) ? colId : null;
+    }
+
+    private int? GetDynamicSelectedColumnId(int tempId)
+    {
+        return DynamicRows.FirstOrDefault(r => r.TempId == tempId)?.SelectedColumnId;
+    }
+
+    private async Task OnSelect(int rowId, int columnId)
+    {
+        var dict = new Dictionary<int, int>(Selections) { [rowId] = columnId };
+        Selections = dict;
+        await SelectionsChanged.InvokeAsync(dict);
+    }
+
+    private async Task OnDynamicSelect(int tempId, int columnId)
+    {
+        var row = DynamicRows.FirstOrDefault(r => r.TempId == tempId);
+        if (row != null)
+        {
+            row.SelectedColumnId = columnId;
+            await DynamicRowsChanged.InvokeAsync(DynamicRows);
+        }
+    }
+
+    private void OnDynamicRowTextChange(int tempId, string? text)
+    {
+        var row = DynamicRows.FirstOrDefault(r => r.TempId == tempId);
+        if (row != null)
+            row.Text = text ?? string.Empty;
+    }
+
+    private async Task AddDynamicRow()
+    {
+        DynamicRows.Add(new DynamicRowData { TempId = _nextTempId++ });
+        await DynamicRowsChanged.InvokeAsync(DynamicRows);
+    }
+}

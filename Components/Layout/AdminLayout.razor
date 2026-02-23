@@ -1,0 +1,21 @@
+@inherits LayoutComponentBase
+
+<div class="flex min-h-screen bg-gray-100">
+    <aside class="w-64 bg-gray-800 text-white shrink-0">
+        <div class="p-6">
+            <h2 class="text-lg font-bold">管理画面</h2>
+        </div>
+        <nav class="px-4 space-y-1">
+            <NavLink href="/admin/surveys" class="block px-4 py-2.5 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white transition-colors" ActiveClass="bg-gray-700 text-white">
+                アンケート管理
+            </NavLink>
+            <NavLink href="/" class="block px-4 py-2.5 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white transition-colors">
+                サイトに戻る
+            </NavLink>
+        </nav>
+    </aside>
+
+    <main class="flex-1 p-8">
+        @Body
+    </main>
+</div>

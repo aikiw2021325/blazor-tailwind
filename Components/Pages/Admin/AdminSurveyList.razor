@@ -1,0 +1,91 @@
+@page "/admin/surveys"
+@rendermode InteractiveServer
+@layout BlazorTailwindApp.Components.Layout.AdminLayout
+@using BlazorTailwindApp.Models.Entities
+@using BlazorTailwindApp.Services
+@inject ISurveyAdminService AdminService
+@inject NavigationManager Navigation
+
+<div>
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-gray-900">アンケート一覧</h1>
+        <button @onclick="CreateSurvey"
+                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
+            + 新規作成
+        </button>
+    </div>
+
+    @if (_surveys == null)
+    {
+        <p class="text-gray-500">読み込み中...</p>
+    }
+    else if (_surveys.Count == 0)
+    {
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+            <p class="text-gray-500">アンケートがありません。</p>
+        </div>
+    }
+    else
+    {
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <table class="w-full">
+                <thead>
+                    <tr class="bg-gray-50 border-b border-gray-200">
+                        <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">ID</th>
+                        <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">タイトル</th>
+                        <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">状態</th>
+                        <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">作成日</th>
+                        <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">操作</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    @foreach (var survey in _surveys)
+                    {
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 text-sm text-gray-600">@survey.Id</td>
+                            <td class="px-6 py-4 text-sm font-medium text-gray-900">@survey.Title</td>
+                            <td class="px-6 py-4">
+                                @if (survey.IsActive)
+                                {
+                                    <span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded-full">有効</span>
+                                }
+                                else
+                                {
+                                    <span class="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded-full">無効</span>
+                                }
+                            </td>
+                            <td class="px-6 py-4 text-sm text-gray-600">@survey.CreatedAt.ToString("yyyy/MM/dd")</td>
+                            <td class="px-6 py-4 space-x-2">
+                                <a href="/admin/surveys/@survey.Id"
+                                   class="text-sm text-blue-600 hover:text-blue-800">編集</a>
+                                <a href="/admin/surveys/@survey.Id/responses"
+                                   class="text-sm text-green-600 hover:text-green-800">回答</a>
+                                <a href="/survey/@survey.Id" target="_blank"
+                                   class="text-sm text-gray-600 hover:text-gray-800">プレビュー</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@code {
+    private List<Survey>? _surveys;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _surveys = await AdminService.GetAllSurveysAsync();
+    }
+
+    private async Task CreateSurvey()
+    {
+        var survey = await AdminService.CreateSurveyAsync(new Survey
+        {
+            Title = "新しいアンケート",
+            CreatedAt = DateTime.UtcNow
+        });
+        Navigation.NavigateTo($"/admin/surveys/{survey.Id}");
+    }
+}

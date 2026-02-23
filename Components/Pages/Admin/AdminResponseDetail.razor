@@ -1,0 +1,108 @@
+@page "/admin/surveys/{SurveyId:int}/responses/{Id:int}"
+@rendermode InteractiveServer
+@layout BlazorTailwindApp.Components.Layout.AdminLayout
+@using BlazorTailwindApp.Models.Entities
+@using BlazorTailwindApp.Models.Enums
+@using BlazorTailwindApp.Services
+@inject ISurveyAdminService AdminService
+
+<div>
+    <div class="mb-6">
+        <a href="/admin/surveys/@SurveyId/responses" class="text-sm text-blue-600 hover:text-blue-800">&larr; 回答一覧に戻る</a>
+    </div>
+
+    @if (_response == null)
+    {
+        <p class="text-gray-500">読み込み中...</p>
+    }
+    else
+    {
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+            <h1 class="text-2xl font-bold text-gray-900 mb-2">回答詳細</h1>
+            <div class="text-sm text-gray-500 space-y-1">
+                <p>回答ID: @_response.Id</p>
+                <p>回答者: @(_response.RespondentIdentifier ?? "匿名")</p>
+                <p>回答日時: @_response.SubmittedAt.ToString("yyyy/MM/dd HH:mm:ss")</p>
+            </div>
+        </div>
+
+        @foreach (var group in _response.Answers
+            .GroupBy(a => a.Question)
+            .OrderBy(g => g.Key.Step)
+            .ThenBy(g => g.Key.DisplayOrder))
+        {
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-4">
+                <h3 class="text-md font-semibold text-gray-900 mb-2">
+                    <span class="text-xs font-mono bg-gray-100 px-2 py-1 rounded text-gray-600 mr-2">
+                        Step @group.Key.Step
+                    </span>
+                    @group.Key.Text
+                </h3>
+                <div class="mt-3 text-gray-700">
+                    @switch (group.Key.QuestionType)
+                    {
+                        case QuestionType.SingleChoice:
+                        case QuestionType.MultipleChoice:
+                            <ul class="list-disc list-inside space-y-1">
+                                @foreach (var answer in group)
+                                {
+                                    @if (answer.SelectedOption != null)
+                                    {
+                                        <li>@answer.SelectedOption.Text</li>
+                                    }
+                                    @if (!string.IsNullOrEmpty(answer.TextValue))
+                                    {
+                                        <li>その他: @answer.TextValue</li>
+                                    }
+                                }
+                            </ul>
+                            break;
+
+                        case QuestionType.MatrixRating:
+                        case QuestionType.BoothEvaluation:
+                            <div class="space-y-1">
+                                @foreach (var answer in group)
+                                {
+                                    @if (answer.MatrixRow != null && answer.MatrixColumn != null)
+                                    {
+                                        <p>@answer.MatrixRow.Text: <span class="font-medium">@answer.MatrixColumn.Text</span></p>
+                                    }
+                                    else if (!string.IsNullOrEmpty(answer.TextValue) && answer.MatrixColumn != null)
+                                    {
+                                        <p>@answer.TextValue (追加): <span class="font-medium">@answer.MatrixColumn.Text</span></p>
+                                    }
+                                }
+                            </div>
+                            break;
+
+                        case QuestionType.NpsScale:
+                            @foreach (var answer in group)
+                            {
+                                <p class="text-2xl font-bold text-blue-600">@answer.NumericValue</p>
+                            }
+                            break;
+
+                        case QuestionType.FreeText:
+                            @foreach (var answer in group)
+                            {
+                                <p class="whitespace-pre-wrap bg-gray-50 p-3 rounded">@answer.TextValue</p>
+                            }
+                            break;
+                    }
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public int SurveyId { get; set; }
+    [Parameter] public int Id { get; set; }
+
+    private SurveyResponse? _response;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _response = await AdminService.GetResponseDetailAsync(Id);
+    }
+}

@@ -1,0 +1,74 @@
+@using BlazorTailwindApp.Models.Entities
+
+<div class="space-y-3">
+    @foreach (var option in Question.Options)
+    {
+        <label class="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors @(SelectedOptionIds.Contains(option.Id) ? "bg-blue-50 border-blue-300" : "")">
+            <input type="checkbox"
+                   checked="@(SelectedOptionIds.Contains(option.Id))"
+                   @onchange="e => OnToggle(option.Id, (bool)e.Value!)"
+                   class="w-4 h-4 text-blue-600 rounded" />
+            <span class="text-gray-700">@option.Text</span>
+        </label>
+    }
+
+    @if (Question.AllowOtherOption)
+    {
+        <div class="p-3 rounded-lg border border-gray-200">
+            <label class="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox"
+                       checked="@IsOtherChecked"
+                       @onchange="e => OnOtherToggle((bool)e.Value!)"
+                       class="w-4 h-4 text-blue-600 rounded" />
+                <span class="text-gray-700">その他</span>
+            </label>
+            @if (IsOtherChecked)
+            {
+                <input type="text"
+                       value="@OtherText"
+                       @onchange="e => OnOtherTextChange((string?)e.Value)"
+                       placeholder="その他の内容を入力"
+                       class="mt-2 ml-7 w-full max-w-md px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public Question Question { get; set; } = null!;
+    [Parameter] public List<int> SelectedOptionIds { get; set; } = [];
+    [Parameter] public EventCallback<List<int>> SelectedOptionIdsChanged { get; set; }
+    [Parameter] public string? OtherText { get; set; }
+    [Parameter] public EventCallback<string?> OtherTextChanged { get; set; }
+
+    private bool IsOtherChecked => !string.IsNullOrEmpty(OtherText) || _otherChecked;
+    private bool _otherChecked;
+
+    private async Task OnToggle(int optionId, bool isChecked)
+    {
+        var list = new List<int>(SelectedOptionIds);
+        if (isChecked)
+            list.Add(optionId);
+        else
+            list.Remove(optionId);
+
+        SelectedOptionIds = list;
+        await SelectedOptionIdsChanged.InvokeAsync(list);
+    }
+
+    private async Task OnOtherToggle(bool isChecked)
+    {
+        _otherChecked = isChecked;
+        if (!isChecked)
+        {
+            OtherText = null;
+            await OtherTextChanged.InvokeAsync(null);
+        }
+    }
+
+    private async Task OnOtherTextChange(string? value)
+    {
+        OtherText = value;
+        await OtherTextChanged.InvokeAsync(value);
+    }
+}

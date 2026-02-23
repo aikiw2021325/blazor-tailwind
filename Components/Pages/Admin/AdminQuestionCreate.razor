@@ -1,0 +1,120 @@
+@page "/admin/surveys/{SurveyId:int}/questions/new"
+@rendermode InteractiveServer
+@layout BlazorTailwindApp.Components.Layout.AdminLayout
+@using BlazorTailwindApp.Models.Entities
+@using BlazorTailwindApp.Models.Enums
+@using BlazorTailwindApp.Services
+@inject ISurveyAdminService AdminService
+@inject NavigationManager Navigation
+
+<div>
+    <div class="mb-6">
+        <a href="/admin/surveys/@SurveyId" class="text-sm text-blue-600 hover:text-blue-800">&larr; アンケートに戻る</a>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">新規質問を追加</h2>
+
+        <div class="space-y-4 max-w-2xl">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">質問タイプ</label>
+                <select @bind="_questionType"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="@QuestionType.SingleChoice">単一選択</option>
+                    <option value="@QuestionType.MultipleChoice">複数選択</option>
+                    <option value="@QuestionType.MatrixRating">マトリクス評価</option>
+                    <option value="@QuestionType.NpsScale">NPS</option>
+                    <option value="@QuestionType.BoothEvaluation">ブース評価</option>
+                    <option value="@QuestionType.FreeText">自由記述</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">質問テキスト</label>
+                <input type="text" @bind="_text"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">ステップ番号</label>
+                    <input type="number" @bind="_step" min="1"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">表示順</label>
+                    <input type="number" @bind="_displayOrder" min="0"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <label class="flex items-center gap-2">
+                    <input type="checkbox" @bind="_isRequired" class="w-4 h-4" />
+                    <span class="text-sm text-gray-700">必須</span>
+                </label>
+                @if (_questionType == QuestionType.MultipleChoice)
+                {
+                    <label class="flex items-center gap-2">
+                        <input type="checkbox" @bind="_allowOther" class="w-4 h-4" />
+                        <span class="text-sm text-gray-700">「その他」オプション</span>
+                    </label>
+                }
+            </div>
+
+            @if (_questionType == QuestionType.NpsScale)
+            {
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">低スコアラベル</label>
+                        <input type="text" @bind="_npsLowLabel" placeholder="全くそう思わない"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">高スコアラベル</label>
+                        <input type="text" @bind="_npsHighLabel" placeholder="非常にそう思う"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    </div>
+                </div>
+            }
+
+            <div class="pt-4">
+                <button @onclick="Create"
+                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
+                    作成
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public int SurveyId { get; set; }
+
+    private QuestionType _questionType = QuestionType.SingleChoice;
+    private string _text = string.Empty;
+    private int _step = 1;
+    private int _displayOrder;
+    private bool _isRequired = true;
+    private bool _allowOther;
+    private string? _npsLowLabel;
+    private string? _npsHighLabel;
+
+    private async Task Create()
+    {
+        if (string.IsNullOrWhiteSpace(_text)) return;
+
+        var question = new Question
+        {
+            SurveyId = SurveyId,
+            QuestionType = _questionType,
+            Text = _text,
+            Step = _step,
+            DisplayOrder = _displayOrder,
+            IsRequired = _isRequired,
+            AllowOtherOption = _allowOther,
+            NpsLowLabel = _npsLowLabel,
+            NpsHighLabel = _npsHighLabel
+        };
+
+        var created = await AdminService.CreateQuestionAsync(question);
+        Navigation.NavigateTo($"/admin/surveys/{SurveyId}/questions/{created.Id}");
+    }
+}

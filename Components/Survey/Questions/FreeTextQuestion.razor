@@ -1,0 +1,21 @@
+@using BlazorTailwindApp.Models.Entities
+
+<div>
+    <textarea @bind="TextValue"
+              @bind:event="oninput"
+              @bind:after="OnTextChanged"
+              rows="5"
+              placeholder="回答を入力してください"
+              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"></textarea>
+</div>
+
+@code {
+    [Parameter] public Question Question { get; set; } = null!;
+    [Parameter] public string? TextValue { get; set; }
+    [Parameter] public EventCallback<string?> TextValueChanged { get; set; }
+
+    private async Task OnTextChanged()
+    {
+        await TextValueChanged.InvokeAsync(TextValue);
+    }
+}
